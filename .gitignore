@@ -1,0 +1,27 @@
+# Rust build artifacts
+target/
+server/target/
+**/target/
+
+# Node.js dependencies & UI build outputs
+node_modules/
+ui/node_modules/
+**/node_modules/
+ui/dist/
+**/dist/
+
+# Local databases & storage
+data/
+*.db
+*.db-wal
+*.db-shm
+
+# Environment & logs
+.env
+*.log
+
+# OS & Editor junk
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

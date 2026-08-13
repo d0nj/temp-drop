@@ -1,0 +1,160 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CARGO_INCREMENTAL: 0
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build Release Binary (${{ matrix.artifact_name }})
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            artifact_name: tempdrop-linux-amd64
+
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+            artifact_name: tempdrop-linux-arm64
+            cross_linker: aarch64-linux-gnu-gcc
+
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            artifact_name: tempdrop-windows-amd64
+
+          - target: aarch64-pc-windows-msvc
+            os: windows-latest
+            artifact_name: tempdrop-windows-arm64
+
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            artifact_name: tempdrop-darwin-amd64
+
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            artifact_name: tempdrop-darwin-arm64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Restore Rust Release Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: server -> target
+          shared-key: rust-release-${{ matrix.target }}
+          cache-targets: true
+          cache-all-crates: false
+          cache-workspace-crates: false
+          add-job-id-key: false
+          save-if: false
+
+      - name: Install Linux Cross-Linker
+        if: matrix.cross_linker != ''
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+
+      - name: Build Svelte UI Bundle
+        working-directory: ui
+        run: |
+          npm ci
+          npm run build
+
+      - name: Build Release Binary
+        working-directory: server
+        env:
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: ${{ matrix.cross_linker }}
+        run: cargo build --release --target "${{ matrix.target }}"
+
+      - name: Package Release Assets
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p dist
+
+          BIN_NAME="tempdrop"
+          TARGET_ASSET="${{ matrix.artifact_name }}"
+
+          if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+            BIN_NAME="tempdrop.exe"
+            TARGET_ASSET="${{ matrix.artifact_name }}.exe"
+          fi
+
+          BIN_PATH="server/target/${{ matrix.target }}/release/${BIN_NAME}"
+
+          if [[ ! -f "${BIN_PATH}" ]]; then
+            echo "Binary not found: ${BIN_PATH}"
+            exit 1
+          fi
+
+          cp "${BIN_PATH}" "dist/${TARGET_ASSET}"
+
+          cd dist
+
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum "${TARGET_ASSET}" > "${TARGET_ASSET}.sha256"
+          else
+            shasum -a 256 "${TARGET_ASSET}" > "${TARGET_ASSET}.sha256"
+          fi
+
+      - name: Upload Release Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: dist/*
+
+  publish:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download Release Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: tempdrop-*
+          path: dist
+          merge-multiple: true
+
+      - name: List Release Assets
+        shell: bash
+        run: |
+          find dist -maxdepth 2 -type f -print
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
