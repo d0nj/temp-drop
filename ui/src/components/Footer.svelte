@@ -1,5 +1,9 @@
+<script>
+  const version = __APP_VERSION__;
+</script>
+
 <footer class="bottom-footer">
-  <span>TEMPDROP v0.1.1</span>
+  <span>TEMPDROP v{version}</span>
   <span class="sep">•</span>
   <span>ZERO PERSISTENCE</span>
   <span class="sep">•</span>
