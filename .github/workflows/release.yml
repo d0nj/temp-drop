@@ -70,11 +70,9 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
-      - uses: mozilla-actions/sccache-action@v0.0.11
+      - uses: Swatinem/rust-cache@v2
         with:
-          version: v0.16.0
-        env:
-          SCCACHE_GHA_ENABLED: 'true'
+          workspaces: server -> target
 
       - uses: actions/download-artifact@v8
         with:
@@ -83,8 +81,6 @@ jobs:
 
       - name: Build Release Binary
         working-directory: server
-        env:
-          RUSTC_WRAPPER: sccache
         run: cargo build --release --locked --target ${{ matrix.target }}
 
       - name: Package Release Assets
