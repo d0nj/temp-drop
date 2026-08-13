@@ -138,9 +138,18 @@ mod tests {
 
     #[test]
     fn parse_range_cases() {
-        assert!(matches!(parse_range(Some("bytes=0-499")), Some(RangeSpec::Bytes(0, 499))));
-        assert!(matches!(parse_range(Some("bytes=500-")), Some(RangeSpec::Bytes(500, u64::MAX))));
-        assert!(matches!(parse_range(Some("bytes=-500")), Some(RangeSpec::Suffix(500))));
+        assert!(matches!(
+            parse_range(Some("bytes=0-499")),
+            Some(RangeSpec::Bytes(0, 499))
+        ));
+        assert!(matches!(
+            parse_range(Some("bytes=500-")),
+            Some(RangeSpec::Bytes(500, u64::MAX))
+        ));
+        assert!(matches!(
+            parse_range(Some("bytes=-500")),
+            Some(RangeSpec::Suffix(500))
+        ));
         assert!(parse_range(Some("bytes=0-10,20-30")).is_none());
         assert!(parse_range(Some("invalid")).is_none());
     }

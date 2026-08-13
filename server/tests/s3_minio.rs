@@ -62,9 +62,12 @@ async fn s3_full_upload_download_flow() {
         )
         .await;
     assert_eq!(resp.status(), StatusCode::CREATED);
-    let v: Value =
-        serde_json::from_slice(&axum::body::to_bytes(resp.into_body(), usize::MAX).await.unwrap())
-            .unwrap();
+    let v: Value = serde_json::from_slice(
+        &axum::body::to_bytes(resp.into_body(), usize::MAX)
+            .await
+            .unwrap(),
+    )
+    .unwrap();
     assert_eq!(v["backend"], "s3");
     let id = v["id"].as_str().unwrap().to_string();
     let token = v["upload_token"].as_str().unwrap().to_string();
@@ -80,9 +83,12 @@ async fn s3_full_upload_download_flow() {
         )
         .await;
     assert_eq!(resp.status(), StatusCode::OK);
-    let pv: Value =
-        serde_json::from_slice(&axum::body::to_bytes(resp.into_body(), usize::MAX).await.unwrap())
-            .unwrap();
+    let pv: Value = serde_json::from_slice(
+        &axum::body::to_bytes(resp.into_body(), usize::MAX)
+            .await
+            .unwrap(),
+    )
+    .unwrap();
     let url = pv["url"].as_str().unwrap().to_string();
     let http = reqwest::Client::new();
     let up = http
@@ -108,9 +114,12 @@ async fn s3_full_upload_download_flow() {
                 .unwrap(),
         )
         .await;
-    let pv: Value =
-        serde_json::from_slice(&axum::body::to_bytes(resp.into_body(), usize::MAX).await.unwrap())
-            .unwrap();
+    let pv: Value = serde_json::from_slice(
+        &axum::body::to_bytes(resp.into_body(), usize::MAX)
+            .await
+            .unwrap(),
+    )
+    .unwrap();
     let up = http
         .put(pv["url"].as_str().unwrap())
         .body(vec![6u8, 7, 8, 9, 10])
@@ -142,9 +151,12 @@ async fn s3_full_upload_download_flow() {
                 .unwrap(),
         )
         .await;
-    let mv: Value =
-        serde_json::from_slice(&axum::body::to_bytes(resp.into_body(), usize::MAX).await.unwrap())
-            .unwrap();
+    let mv: Value = serde_json::from_slice(
+        &axum::body::to_bytes(resp.into_body(), usize::MAX)
+            .await
+            .unwrap(),
+    )
+    .unwrap();
     assert_eq!(mv["size"], 10);
 
     // ranged download through the API
@@ -182,9 +194,12 @@ async fn s3_abort_removes_multipart() {
                 .unwrap(),
         )
         .await;
-    let v: Value =
-        serde_json::from_slice(&axum::body::to_bytes(resp.into_body(), usize::MAX).await.unwrap())
-            .unwrap();
+    let v: Value = serde_json::from_slice(
+        &axum::body::to_bytes(resp.into_body(), usize::MAX)
+            .await
+            .unwrap(),
+    )
+    .unwrap();
     let id = v["id"].as_str().unwrap().to_string();
     let token = v["upload_token"].as_str().unwrap().to_string();
     let resp = env
@@ -226,9 +241,12 @@ async fn s3_rejects_etag_count_mismatch() {
                 .unwrap(),
         )
         .await;
-    let v: Value =
-        serde_json::from_slice(&axum::body::to_bytes(resp.into_body(), usize::MAX).await.unwrap())
-            .unwrap();
+    let v: Value = serde_json::from_slice(
+        &axum::body::to_bytes(resp.into_body(), usize::MAX)
+            .await
+            .unwrap(),
+    )
+    .unwrap();
     let id = v["id"].as_str().unwrap().to_string();
     let token = v["upload_token"].as_str().unwrap().to_string();
     let _ = env

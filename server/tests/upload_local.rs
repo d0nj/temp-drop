@@ -66,9 +66,12 @@ async fn local_full_upload_flow() {
     let env = TestEnv::new().await;
     // start
     let resp = start(&env, json!({"name": "pic.bin", "ttl_seconds": 3600})).await;
-    let v: Value =
-        serde_json::from_slice(&axum::body::to_bytes(resp.into_body(), usize::MAX).await.unwrap())
-            .unwrap();
+    let v: Value = serde_json::from_slice(
+        &axum::body::to_bytes(resp.into_body(), usize::MAX)
+            .await
+            .unwrap(),
+    )
+    .unwrap();
     let id = v["id"].as_str().unwrap().to_string();
     let token = v["upload_token"].as_str().unwrap().to_string();
 
@@ -110,9 +113,12 @@ async fn local_full_upload_flow() {
         )
         .await;
     assert_eq!(done.status(), StatusCode::OK);
-    let dv: Value =
-        serde_json::from_slice(&axum::body::to_bytes(done.into_body(), usize::MAX).await.unwrap())
-            .unwrap();
+    let dv: Value = serde_json::from_slice(
+        &axum::body::to_bytes(done.into_body(), usize::MAX)
+            .await
+            .unwrap(),
+    )
+    .unwrap();
     assert_eq!(dv["url"], format!("/f/{id}"));
 
     // disk state

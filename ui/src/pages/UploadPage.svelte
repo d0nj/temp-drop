@@ -29,8 +29,6 @@
     }
   });
 
-  const CHUNK = 32 * 1024 * 1024;
-
   function onFiles(files) {
     if (!files || !files.length) return;
     file = files[0];
@@ -59,7 +57,6 @@
     try {
       result = await uploadFile({
         file,
-        chunkSize: CHUNK,
         ttlSeconds,
         maxDownloads: md,
         onProgress: (sent, total) => {

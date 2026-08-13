@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 const S3_MIN_PART: u64 = 5 * 1024 * 1024;
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Config {
     pub server: ServerConfig,
@@ -12,18 +12,6 @@ pub struct Config {
     pub uploads: UploadsConfig,
     pub rate_limit: RateLimitConfig,
     pub janitor: JanitorConfig,
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            server: ServerConfig::default(),
-            storage: StorageConfig::default(),
-            uploads: UploadsConfig::default(),
-            rate_limit: RateLimitConfig::default(),
-            janitor: JanitorConfig::default(),
-        }
-    }
 }
 
 #[derive(Debug, Clone, Deserialize)]

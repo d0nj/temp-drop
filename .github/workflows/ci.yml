@@ -2,11 +2,8 @@ name: ci
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
-    branches:
-      - main
   workflow_dispatch:
 
 permissions:
@@ -17,119 +14,47 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  CARGO_INCREMENTAL: 0
   CARGO_TERM_COLOR: always
 
 jobs:
   test:
-    name: Test & Build Check (Ubuntu)
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: ui/package-lock.json
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache Rust
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: server -> target
-          shared-key: rust-test-x86_64-unknown-linux-gnu
-          cache-targets: true
-          cache-all-crates: false
-          cache-workspace-crates: false
-          add-job-id-key: false
-
-      - name: Build Svelte UI Bundle
-        working-directory: ui
-        run: |
-          npm ci
-          npm run build
-
-      - name: Run Server Tests
-        working-directory: server
-        run: cargo test
-
-  warm-release-cache:
-    name: Warm Release Cache (${{ matrix.target }})
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-
+    name: Test (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - target: x86_64-unknown-linux-gnu
-            os: ubuntu-latest
-
-          - target: aarch64-unknown-linux-gnu
-            os: ubuntu-latest
-            cross_linker: aarch64-linux-gnu-gcc
-
-          - target: x86_64-pc-windows-msvc
-            os: windows-latest
-
-          - target: aarch64-pc-windows-msvc
-            os: windows-latest
-
-          - target: x86_64-apple-darwin
-            os: macos-latest
-
-          - target: aarch64-apple-darwin
-            os: macos-latest
-
+        os: [ubuntu-24.04, windows-2022]
     runs-on: ${{ matrix.os }}
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: ui/package-lock.json
 
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.target }}
+          components: clippy, rustfmt
 
-      - name: Cache Rust Release Build
-        uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@v2
         with:
           workspaces: server -> target
-          shared-key: rust-release-${{ matrix.target }}
-          cache-targets: true
-          cache-all-crates: false
-          cache-workspace-crates: false
-          add-job-id-key: false
-          save-if: ${{ github.ref == 'refs/heads/main' }}
-
-      - name: Install Linux Cross-Linker
-        if: matrix.cross_linker != ''
-        shell: bash
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu
 
       - name: Build Svelte UI Bundle
         working-directory: ui
-        run: |
-          npm ci
-          npm run build
+        run: npm ci && npm run build
 
-      - name: Build Release Target
+      - name: Format check
+        if: matrix.os == 'ubuntu-24.04'
         working-directory: server
-        env:
-          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: ${{ matrix.cross_linker }}
-        run: cargo build --release --target "${{ matrix.target }}"
+        run: cargo fmt --all -- --check
+
+      - name: Clippy
+        if: matrix.os == 'ubuntu-24.04'
+        working-directory: server
+        run: cargo clippy --all-targets --all-features --locked -- -D warnings
+
+      - name: Test
+        working-directory: server
+        run: cargo test --locked --all-targets

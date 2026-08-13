@@ -2,159 +2,130 @@ name: release
 
 on:
   push:
-    tags:
-      - 'v*'
-  workflow_dispatch:
+    tags: ['v*']
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 
 env:
-  CARGO_INCREMENTAL: 0
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
-    name: Build Release Binary (${{ matrix.artifact_name }})
-
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - target: x86_64-unknown-linux-gnu
-            os: ubuntu-latest
-            artifact_name: tempdrop-linux-amd64
-
-          - target: aarch64-unknown-linux-gnu
-            os: ubuntu-latest
-            artifact_name: tempdrop-linux-arm64
-            cross_linker: aarch64-linux-gnu-gcc
-
-          - target: x86_64-pc-windows-msvc
-            os: windows-latest
-            artifact_name: tempdrop-windows-amd64
-
-          - target: aarch64-pc-windows-msvc
-            os: windows-latest
-            artifact_name: tempdrop-windows-arm64
-
-          - target: x86_64-apple-darwin
-            os: macos-latest
-            artifact_name: tempdrop-darwin-amd64
-
-          - target: aarch64-apple-darwin
-            os: macos-latest
-            artifact_name: tempdrop-darwin-arm64
-
-    runs-on: ${{ matrix.os }}
-
+  ui:
+    name: Build UI Bundle
+    runs-on: ubuntu-24.04
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: ui/package-lock.json
 
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+      - name: Build Svelte UI Bundle
+        working-directory: ui
+        run: npm ci && npm run build
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ui-dist
+          path: ui/dist
+          retention-days: 1
+
+  build:
+    name: Build (${{ matrix.target }})
+    needs: ui
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            target: x86_64-unknown-linux-gnu
+            asset: tempdrop-linux-amd64
+          - os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+            asset: tempdrop-linux-arm64
+          - os: windows-2022
+            target: x86_64-pc-windows-msvc
+            asset: tempdrop-windows-amd64
+          - os: windows-11-arm
+            target: aarch64-pc-windows-msvc
+            asset: tempdrop-windows-arm64
+          - os: macos-15-intel
+            target: x86_64-apple-darwin
+            asset: tempdrop-darwin-amd64
+          - os: macos-15
+            target: aarch64-apple-darwin
+            asset: tempdrop-darwin-arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
 
-      - name: Restore Rust Release Cache
-        uses: Swatinem/rust-cache@v2
+      - uses: mozilla-actions/sccache-action@v0.0.11
         with:
-          workspaces: server -> target
-          shared-key: rust-release-${{ matrix.target }}
-          cache-targets: true
-          cache-all-crates: false
-          cache-workspace-crates: false
-          add-job-id-key: false
-          save-if: false
+          version: v0.16.0
+        env:
+          SCCACHE_GHA_ENABLED: 'true'
 
-      - name: Install Linux Cross-Linker
-        if: matrix.cross_linker != ''
-        shell: bash
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu
-
-      - name: Build Svelte UI Bundle
-        working-directory: ui
-        run: |
-          npm ci
-          npm run build
+      - uses: actions/download-artifact@v8
+        with:
+          name: ui-dist
+          path: ui/dist
 
       - name: Build Release Binary
         working-directory: server
         env:
-          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: ${{ matrix.cross_linker }}
-        run: cargo build --release --target "${{ matrix.target }}"
+          RUSTC_WRAPPER: sccache
+        run: cargo build --release --locked --target ${{ matrix.target }}
 
       - name: Package Release Assets
         shell: bash
         run: |
           set -euo pipefail
-
-          mkdir -p dist
-
           BIN_NAME="tempdrop"
-          TARGET_ASSET="${{ matrix.artifact_name }}"
-
-          if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-            BIN_NAME="tempdrop.exe"
-            TARGET_ASSET="${{ matrix.artifact_name }}.exe"
-          fi
-
+          if [[ "${{ matrix.os }}" == windows-* ]]; then BIN_NAME="tempdrop.exe"; fi
           BIN_PATH="server/target/${{ matrix.target }}/release/${BIN_NAME}"
-
-          if [[ ! -f "${BIN_PATH}" ]]; then
-            echo "Binary not found: ${BIN_PATH}"
-            exit 1
-          fi
-
-          cp "${BIN_PATH}" "dist/${TARGET_ASSET}"
-
+          mkdir -p dist
+          cp "${BIN_PATH}" "dist/${{ matrix.asset }}"
           cd dist
+          (sha256sum "${{ matrix.asset }}" || shasum -a 256 "${{ matrix.asset }}") > "${{ matrix.asset }}.sha256"
 
-          if command -v sha256sum >/dev/null 2>&1; then
-            sha256sum "${TARGET_ASSET}" > "${TARGET_ASSET}.sha256"
-          else
-            shasum -a 256 "${TARGET_ASSET}" > "${TARGET_ASSET}.sha256"
-          fi
-
-      - name: Upload Release Artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
-          name: ${{ matrix.artifact_name }}
+          name: ${{ matrix.asset }}
           path: dist/*
+          retention-days: 1
 
   publish:
     name: Publish GitHub Release
     needs: build
-    runs-on: ubuntu-latest
-
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    runs-on: ubuntu-24.04
     steps:
-      - name: Download Release Artifacts
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
+          path: release
           pattern: tempdrop-*
-          path: dist
           merge-multiple: true
 
-      - name: List Release Assets
-        shell: bash
-        run: |
-          find dist -maxdepth 2 -type f -print
+      - name: Attest Release Binaries
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: release/*
 
       - name: Publish GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: dist/*
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" release/* --generate-notes

@@ -22,22 +22,42 @@ impl ApiError {
         Self::new("bad_request", StatusCode::BAD_REQUEST, m)
     }
     pub fn invalid_token() -> Self {
-        Self::new("invalid_token", StatusCode::UNAUTHORIZED, "invalid upload token")
+        Self::new(
+            "invalid_token",
+            StatusCode::UNAUTHORIZED,
+            "invalid upload token",
+        )
     }
     pub fn not_found() -> Self {
         Self::new("not_found", StatusCode::NOT_FOUND, "upload not found")
     }
     pub fn part_out_of_order() -> Self {
-        Self::new("part_out_of_order", StatusCode::CONFLICT, "part number out of order")
+        Self::new(
+            "part_out_of_order",
+            StatusCode::CONFLICT,
+            "part number out of order",
+        )
     }
     pub fn already_complete() -> Self {
-        Self::new("already_complete", StatusCode::CONFLICT, "upload is already complete")
+        Self::new(
+            "already_complete",
+            StatusCode::CONFLICT,
+            "upload is already complete",
+        )
     }
     pub fn not_complete() -> Self {
-        Self::new("not_complete", StatusCode::CONFLICT, "upload has no parts yet")
+        Self::new(
+            "not_complete",
+            StatusCode::CONFLICT,
+            "upload has no parts yet",
+        )
     }
     pub fn part_too_large() -> Self {
-        Self::new("part_too_large", StatusCode::PAYLOAD_TOO_LARGE, "part exceeds chunk size")
+        Self::new(
+            "part_too_large",
+            StatusCode::PAYLOAD_TOO_LARGE,
+            "part exceeds chunk size",
+        )
     }
     pub fn upload_too_large() -> Self {
         Self::new(
@@ -54,7 +74,11 @@ impl ApiError {
         )
     }
     pub fn rate_limited() -> Self {
-        Self::new("rate_limited", StatusCode::TOO_MANY_REQUESTS, "rate limit exceeded")
+        Self::new(
+            "rate_limited",
+            StatusCode::TOO_MANY_REQUESTS,
+            "rate limit exceeded",
+        )
     }
     pub fn in_flight_limit() -> Self {
         Self::new(
@@ -71,7 +95,11 @@ impl ApiError {
         )
     }
     pub fn invalid_etag() -> Self {
-        Self::new("invalid_etag", StatusCode::CONFLICT, "one or more part etags are invalid")
+        Self::new(
+            "invalid_etag",
+            StatusCode::CONFLICT,
+            "one or more part etags are invalid",
+        )
     }
     pub fn validation(m: impl Into<String>) -> Self {
         Self::new("validation", StatusCode::UNPROCESSABLE_ENTITY, m)
@@ -83,7 +111,12 @@ impl ApiError {
         Self::new("storage_error", StatusCode::SERVICE_UNAVAILABLE, m)
     }
     pub fn internal(m: impl Into<String>) -> Self {
-        Self::new("internal", StatusCode::INTERNAL_SERVER_ERROR, m)
+        eprintln!("internal: {}", m.into());
+        Self::new(
+            "internal",
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal server error",
+        )
     }
 }
 

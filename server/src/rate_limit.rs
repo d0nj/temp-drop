@@ -32,12 +32,20 @@ impl RateLimiter {
 
     #[cfg(test)]
     pub fn prune(&self, now: i64) {
-        self.windows.lock().unwrap().retain(|_, (t, _)| now - *t < 120);
+        self.windows
+            .lock()
+            .unwrap()
+            .retain(|_, (t, _)| now - *t < 120);
     }
 
     #[cfg(test)]
     pub fn len(&self) -> usize {
         self.windows.lock().unwrap().len()
+    }
+
+    #[cfg(test)]
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 }
 

@@ -58,7 +58,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let app = api::router(state);
     let addr: SocketAddr = format!("{}:{}", config.server.bind, config.server.port).parse()?;
     let listener = tokio::net::TcpListener::bind(&addr).await?;
-    println!("tempdrop: listening on http://{addr} (storage: {})", config.storage.backend);
+    println!(
+        "tempdrop: listening on http://{addr} (storage: {})",
+        config.storage.backend
+    );
     axum::serve(
         listener,
         app.into_make_service_with_connect_info::<SocketAddr>(),

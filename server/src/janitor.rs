@@ -16,6 +16,7 @@ pub async fn sweep_once(state: &AppState, now: i64) -> Result<usize, String> {
             n += 1;
         }
     }
+    let _ = state.db.checkpoint().await; // best-effort WAL truncation after delete
     Ok(n)
 }
 

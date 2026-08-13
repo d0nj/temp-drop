@@ -17,6 +17,7 @@ pub struct UploadRow {
     pub upload_token: String,
     pub created_at: i64,
     pub expires_at: Option<i64>,
+    pub chunk_size: i64,
 }
 
 #[derive(Clone)]
@@ -29,7 +30,8 @@ impl Db {
         let opts = sqlx::sqlite::SqliteConnectOptions::new()
             .filename(path)
             .create_if_missing(true)
-            .journal_mode(sqlx::sqlite::SqliteJournalMode::Wal);
+            .journal_mode(sqlx::sqlite::SqliteJournalMode::Wal)
+            .pragma("secure_delete", "ON");
         let pool = SqlitePool::connect_with(opts).await?;
         let db = Self { pool };
         db.init_schema().await?;
@@ -60,7 +62,8 @@ impl Db {
                 download_count INTEGER NOT NULL DEFAULT 0,
                 upload_token TEXT NOT NULL,
                 created_at INTEGER NOT NULL,
-                expires_at INTEGER
+                expires_at INTEGER,
+                chunk_size INTEGER NOT NULL DEFAULT 33554432
             )",
         )
         .execute(&self.pool)
@@ -76,8 +79,8 @@ impl Db {
 
     pub async fn create_upload(&self, row: &UploadRow) -> Result<(), sqlx::Error> {
         sqlx::query(
-            "INSERT INTO uploads (id, name, size, backend, storage_key, status, received_bytes, part_count, s3_upload_id, ttl_seconds, max_downloads, download_count, upload_token, created_at, expires_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO uploads (id, name, size, backend, storage_key, status, received_bytes, part_count, s3_upload_id, ttl_seconds, max_downloads, download_count, upload_token, created_at, expires_at, chunk_size)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         )
         .bind(&row.id)
         .bind(&row.name)
@@ -94,6 +97,7 @@ impl Db {
         .bind(&row.upload_token)
         .bind(row.created_at)
         .bind(row.expires_at)
+        .bind(row.chunk_size)
         .execute(&self.pool)
         .await?;
         Ok(())
@@ -155,6 +159,14 @@ impl Db {
     pub async fn delete_upload(&self, id: &str) -> Result<(), sqlx::Error> {
         sqlx::query("DELETE FROM uploads WHERE id = ?")
             .bind(id)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
+    /// Best-effort WAL truncation so deleted-row content doesn't linger in WAL pages.
+    pub async fn checkpoint(&self) -> Result<(), sqlx::Error> {
+        sqlx::query("PRAGMA wal_checkpoint(TRUNCATE)")
             .execute(&self.pool)
             .await?;
         Ok(())
@@ -240,6 +252,7 @@ mod tests {
             upload_token: "tok".into(),
             created_at: 100,
             expires_at: Some(3700),
+            chunk_size: 33554432,
         };
         db.create_upload(&row).await.unwrap();
 
@@ -272,6 +285,7 @@ mod tests {
             upload_token: "t".into(),
             created_at: 10,
             expires_at: Some(70),
+            chunk_size: 33554432,
         };
         db.create_upload(&row).await.unwrap();
 
@@ -302,6 +316,7 @@ mod tests {
             upload_token: "t".into(),
             created_at: 100,
             expires_at: Some(200),
+            chunk_size: 33554432,
         };
         db.create_upload(&row).await.unwrap();
 
@@ -330,6 +345,7 @@ mod tests {
             upload_token: "t".into(),
             created_at: 1,
             expires_at: Some(61),
+            chunk_size: 33554432,
         };
         db.create_upload(&r1).await.unwrap();
         r1.id = "p2".into();
@@ -359,6 +375,7 @@ mod tests {
             upload_token: "t".into(),
             created_at: 0,
             expires_at: Some(10),
+            chunk_size: 33554432,
         };
         // row 2: live
         let r2 = UploadRow {
@@ -377,6 +394,7 @@ mod tests {
             upload_token: "t".into(),
             created_at: 0,
             expires_at: Some(100),
+            chunk_size: 33554432,
         };
         // row 3: stale pending
         let r3 = UploadRow {
@@ -395,6 +413,7 @@ mod tests {
             upload_token: "t".into(),
             created_at: 0,
             expires_at: Some(100),
+            chunk_size: 33554432,
         };
         db.create_upload(&r1).await.unwrap();
         db.create_upload(&r2).await.unwrap();

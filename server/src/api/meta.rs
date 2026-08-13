@@ -16,6 +16,7 @@ pub struct MetaRes {
     pub downloads_left: Option<i64>,
     pub max_downloads: Option<i64>,
     pub status: String,
+    pub chunk_size: i64,
 }
 
 pub async fn upload_meta(
@@ -53,5 +54,6 @@ pub async fn upload_meta(
         downloads_left,
         max_downloads: row.max_downloads,
         status: row.status,
+        chunk_size: row.chunk_size,
     }))
 }

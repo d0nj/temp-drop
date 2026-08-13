@@ -1,5 +1,5 @@
 import { api, ApiError, shareUrl } from "./api.js";
-import { generateKey, exportKeyToString, encryptChunk, encryptText } from "./crypto.js";
+import { generateKey, exportKeyToString, encryptChunk, encryptName } from "./crypto.js";
 
 const RETRIES = 3;
 
@@ -52,7 +52,6 @@ function uploadChunkXHR({ url, headers, body, signal, onChunkProgress }) {
 
 export async function uploadFile({
   file,
-  chunkSize,
   ttlSeconds,
   maxDownloads,
   signal,
@@ -63,7 +62,7 @@ export async function uploadFile({
   const keyStr = await exportKeyToString(cryptoKey);
 
   // Encrypt filename client-side before sending to server
-  const encryptedName = "enc:" + (await encryptText(file.name || "unnamed", cryptoKey));
+  const encryptedName = "enc:" + (await encryptName(file.name || "unnamed", cryptoKey));
 
   const req = {
     name: encryptedName,
@@ -79,6 +78,7 @@ export async function uploadFile({
   });
   const id = started.id;
   const token = started.upload_token;
+  const chunkSize = started.chunk_size;
   let etags = [];
 
   try {

@@ -61,26 +61,31 @@ export async function decryptChunk(encryptedBytes, key) {
   return decrypted;
 }
 
-/**
-  Encrypts a text string (e.g. filename) to a hex ciphertext string.
-*/
-export async function encryptText(text, key) {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(text);
-  const encrypted = await encryptChunk(data, key);
-  return Array.from(encrypted)
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
+const MAX_NAME_BYTES = 512;
+
+function padNameBytes(name) {
+  const bytes = new TextEncoder().encode(name);
+  if (bytes.length > MAX_NAME_BYTES) {
+    // truncate at a UTF-8 boundary: drop partial trailing multi-byte sequence
+    let end = MAX_NAME_BYTES;
+    while (end > 0 && (bytes[end] & 0xc0) === 0x80) end--;
+    return bytes.slice(0, end);
+  }
+  const padded = new Uint8Array(MAX_NAME_BYTES);
+  padded.set(bytes);
+  return padded; // zero-padded
 }
 
-/**
-  Decrypts a hex ciphertext string back to a text string.
-*/
-export async function decryptText(hexStr, key) {
-  const bytes = new Uint8Array(
-    hexStr.match(/.{1,2}/g).map((byte) => parseInt(byte, 16))
-  );
-  const decryptedBuffer = await decryptChunk(bytes, key);
-  const decoder = new TextDecoder();
-  return decoder.decode(decryptedBuffer);
+export async function encryptName(name, key) {
+  const encrypted = await encryptChunk(padNameBytes(name), key);
+  return Array.from(encrypted).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+export async function decryptName(hexStr, key) {
+  const bytes = new Uint8Array(hexStr.match(/.{1,2}/g).map((byte) => parseInt(byte, 16)));
+  const decrypted = await decryptChunk(bytes, key);
+  const padded = new Uint8Array(decrypted);
+  let end = padded.length;
+  while (end > 0 && padded[end - 1] === 0) end--;
+  return new TextDecoder().decode(padded.slice(0, end));
 }

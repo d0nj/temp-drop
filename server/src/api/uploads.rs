@@ -119,9 +119,16 @@ pub async fn start_upload(
         return Err(ApiError::rate_limited());
     }
 
-    let name = crate::id::sanitize_name(&req.name).map_err(|e| ApiError::validation(e.to_string()))?;
-    let ttl = req.ttl_seconds.filter(|t| *t > 0).map(|t| t.min(st.config.uploads.max_ttl_seconds));
-    let max_downloads = req.max_downloads.filter(|m| *m > 0).map(|m| m.min(st.config.uploads.max_downloads));
+    let name =
+        crate::id::sanitize_name(&req.name).map_err(|e| ApiError::validation(e.to_string()))?;
+    let ttl = req
+        .ttl_seconds
+        .filter(|t| *t > 0)
+        .map(|t| t.min(st.config.uploads.max_ttl_seconds));
+    let max_downloads = req
+        .max_downloads
+        .filter(|m| *m > 0)
+        .map(|m| m.min(st.config.uploads.max_downloads));
     if ttl.is_none() && max_downloads.is_none() {
         return Err(ApiError::no_expiry());
     }
@@ -131,7 +138,11 @@ pub async fn start_upload(
         }
     }
 
-    let inflight = st.db.pending_local_bytes().await.map_err(|e| ApiError::internal(e.to_string()))?;
+    let inflight = st
+        .db
+        .pending_local_bytes()
+        .await
+        .map_err(|e| ApiError::internal(e.to_string()))?;
     if inflight >= st.config.uploads.max_in_flight_bytes {
         return Err(ApiError::in_flight_limit());
     }
@@ -156,8 +167,12 @@ pub async fn start_upload(
         upload_token: token.clone(),
         created_at: now,
         expires_at,
+        chunk_size: st.config.chunk_size() as i64,
     };
-    st.db.create_upload(&row).await.map_err(|e| ApiError::internal(e.to_string()))?;
+    st.db
+        .create_upload(&row)
+        .await
+        .map_err(|e| ApiError::internal(e.to_string()))?;
 
     match &*st.storage {
         Storage::Local(s) => {
@@ -165,11 +180,19 @@ pub async fn start_upload(
                 StorageError::LowSpace(free) => ApiError::storage_low(free),
                 other => ApiError::storage_error(other.to_string()),
             })?;
-            s.create(&id).await.map_err(|e| ApiError::storage_error(e.to_string()))?;
+            s.create(&id)
+                .await
+                .map_err(|e| ApiError::storage_error(e.to_string()))?;
         }
         Storage::S3(s) => {
-            let upload_id = s.create_multipart(&id).await.map_err(crate::storage::map_s3_error)?;
-            st.db.set_s3_upload_id(&id, &upload_id).await.map_err(|e| ApiError::internal(e.to_string()))?;
+            let upload_id = s
+                .create_multipart(&id)
+                .await
+                .map_err(crate::storage::map_s3_error)?;
+            st.db
+                .set_s3_upload_id(&id, &upload_id)
+                .await
+                .map_err(|e| ApiError::internal(e.to_string()))?;
         }
     }
 

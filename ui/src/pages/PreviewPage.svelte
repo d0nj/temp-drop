@@ -5,7 +5,7 @@
   import { api } from "../lib/api.js";
   import { formatBytes, formatCountdown, formatUTC } from "../lib/utils.js";
   import { downloadAndDecryptFile } from "../lib/downloader.js";
-  import { importKeyFromString, decryptText } from "../lib/crypto.js";
+  import { importKeyFromString, decryptName } from "../lib/crypto.js";
 
   let { id } = $props();
   let meta = $state(null);
@@ -24,7 +24,7 @@
       if (keyStr) {
         try {
           const key = await importKeyFromString(keyStr);
-          displayFilename = await decryptText(meta.name.slice(4), key);
+          displayFilename = await decryptName(meta.name.slice(4), key);
         } catch {
           displayFilename = "Encrypted Vault File";
         }
@@ -84,6 +84,7 @@
         id,
         filename: displayFilename,
         keyStr,
+        chunkSize: meta.chunk_size,
         onProgress: (received, total) => {
           downloadProgress = { received, total: total || meta?.size || 0 };
         },

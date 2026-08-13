@@ -4,7 +4,6 @@ use aws_sdk_s3::config::{BehaviorVersion, Credentials, Region, SharedCredentials
 use aws_sdk_s3::presigning::PresigningConfig;
 use aws_sdk_s3::types::{CompletedMultipartUpload, CompletedPart};
 use aws_sdk_s3::Client;
-use futures_util::StreamExt;
 use std::time::Duration;
 use tokio_util::io::ReaderStream;
 
@@ -100,7 +99,11 @@ impl S3Storage {
             .bucket(&self.bucket)
             .key(key)
             .upload_id(upload_id)
-            .multipart_upload(CompletedMultipartUpload::builder().set_parts(Some(parts)).build())
+            .multipart_upload(
+                CompletedMultipartUpload::builder()
+                    .set_parts(Some(parts))
+                    .build(),
+            )
             .send()
             .await
             .map_err(|e| StorageError::S3(e.to_string()))?;
@@ -149,7 +152,10 @@ impl S3Storage {
         if let Some((start, end)) = range {
             req = req.range(format!("bytes={start}-{end}"));
         }
-        let resp = req.send().await.map_err(|e| StorageError::S3(e.to_string()))?;
+        let resp = req
+            .send()
+            .await
+            .map_err(|e| StorageError::S3(e.to_string()))?;
         let total = resp.content_length().map(|l| l as u64).unwrap_or(0);
         let (start, end) = match (range, resp.content_range()) {
             (Some(_), Some(cr)) => {
@@ -162,9 +168,7 @@ impl S3Storage {
         if total == 0 {
             return Err(StorageError::NoSuchKey);
         }
-        let stream: ByteStream = Box::pin(
-            ReaderStream::new(resp.body.into_async_read()).map(|r| r.map_err(std::io::Error::from)),
-        );
+        let stream: ByteStream = Box::pin(ReaderStream::new(resp.body.into_async_read()));
         Ok(OpenResult {
             total,
             start,

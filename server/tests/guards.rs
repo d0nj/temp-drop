@@ -21,9 +21,7 @@ async fn rate_limit_rejects_excess() {
                     .method("POST")
                     .uri("/api/uploads")
                     .header("content-type", "application/json")
-                    .body(Body::from(
-                        json!({"name":"x","ttl_seconds":60}).to_string(),
-                    ))
+                    .body(Body::from(json!({"name":"x","ttl_seconds":60}).to_string()))
                     .unwrap(),
             )
             .await;
@@ -35,9 +33,7 @@ async fn rate_limit_rejects_excess() {
                 .method("POST")
                 .uri("/api/uploads")
                 .header("content-type", "application/json")
-                .body(Body::from(
-                    json!({"name":"x","ttl_seconds":60}).to_string(),
-                ))
+                .body(Body::from(json!({"name":"x","ttl_seconds":60}).to_string()))
                 .unwrap(),
         )
         .await;
@@ -102,9 +98,7 @@ async fn in_flight_limit_rejects_start() {
                 .method("POST")
                 .uri("/api/uploads")
                 .header("content-type", "application/json")
-                .body(Body::from(
-                    json!({"name":"b","ttl_seconds":60}).to_string(),
-                ))
+                .body(Body::from(json!({"name":"b","ttl_seconds":60}).to_string()))
                 .unwrap(),
         )
         .await;

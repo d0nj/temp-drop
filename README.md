@@ -119,8 +119,9 @@ presign_ttl_seconds = 900
 - **URL Hash Key Storage**: The decryption key is appended to the share link fragment (`#key=...`). Browsers never transmit URL fragments in HTTP request headers or server paths.
 - **Cryptographic Tokens**: Upload IDs are 12-character Base62 tokens. Upload authorization tokens are 64-character hex secrets.
 - **Input Sanitization**: Filenames are sanitized to prevent CRLF injection, path traversal, and header manipulation.
-- **Rate Limiting & Proxy Security**: Fixed-window rate limiting per client IP with `CF-Connecting-IP` priority.
+- **Rate Limiting & Proxy Security**: Fixed-window rate limiting per client IP with `CF-Connecting-IP` priority. **Warning**: `trust_proxy = true` must only be enabled when the server is actually behind Cloudflare or a reverse proxy — otherwise clients can forge `CF-Connecting-IP` / `X-Forwarded-For` headers to bypass rate limiting.
 - **Security Headers**: Enforces `Content-Security-Policy`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, and `Referrer-Policy: no-referrer`.
+- **Delete Semantics & Forensics**: Disk-level recovery of deleted ciphertext is possible — local files are removed, not zeroed, and S3 deletes are logical. Zero-knowledge is unaffected because the decryption key never reaches the server, but "ephemeral" is not forensically guaranteed.
 
 ---
 

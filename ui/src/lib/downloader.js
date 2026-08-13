@@ -1,9 +1,6 @@
 import { importKeyFromString, decryptChunk } from "./crypto.js";
 
-const CHUNK_SIZE = 32 * 1024 * 1024; // 32 MiB chunk size
-const ENCRYPTED_CHUNK_SIZE = CHUNK_SIZE + 28; // 12-byte IV + 16-byte Tag
-
-export async function downloadAndDecryptFile({ id, filename, keyStr, onProgress }) {
+export async function downloadAndDecryptFile({ id, filename, keyStr, chunkSize, onProgress }) {
   const key = await importKeyFromString(keyStr);
   const response = await fetch(`/raw/${id}`);
   if (!response.ok) {
@@ -12,6 +9,7 @@ export async function downloadAndDecryptFile({ id, filename, keyStr, onProgress 
 
   const reader = response.body.getReader();
   const contentLength = parseInt(response.headers.get("content-length") || "0", 10);
+  const ENCRYPTED_CHUNK_SIZE = chunkSize + 28; // 12-byte IV + 16-byte Tag
 
   let receivedBytes = 0;
   let buffer = new Uint8Array(0);

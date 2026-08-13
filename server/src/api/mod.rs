@@ -14,7 +14,7 @@ use rust_embed::RustEmbed;
 #[folder = "../ui/dist"]
 struct Assets;
 
-const CSP_HEADER: &str = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: http: blob:; img-src 'self' data: blob: https:;";
+const CSP_HEADER: &str = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self' https: http: blob:; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'";
 
 pub fn router(state: AppState) -> Router {
     Router::new()
@@ -29,10 +29,7 @@ pub fn router(state: AppState) -> Router {
             "/api/uploads/{id}/parts/{part}/presign",
             get(uploads::presign_part),
         )
-        .route(
-            "/api/uploads/{id}/complete",
-            post(uploads::complete_upload),
-        )
+        .route("/api/uploads/{id}/complete", post(uploads::complete_upload))
         .route("/raw/{id}", get(download::raw_download))
         .fallback(get(static_or_index))
         .with_state(state)

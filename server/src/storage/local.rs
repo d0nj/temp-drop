@@ -1,9 +1,8 @@
 use super::{ByteStream, OpenResult, StorageError};
-use futures_util::StreamExt;
-use tokio::fs::OpenOptions;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use tokio::fs::File;
+use tokio::fs::OpenOptions;
 use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt, SeekFrom};
 use tokio_util::io::ReaderStream;
 
@@ -99,9 +98,7 @@ impl LocalStorage {
         };
         f.seek(SeekFrom::Start(start)).await?;
         let len = end - start + 1;
-        let stream: ByteStream = Box::pin(
-            ReaderStream::new(f.take(len)).map(|r| r.map_err(std::io::Error::from)),
-        );
+        let stream: ByteStream = Box::pin(ReaderStream::new(f.take(len)));
         Ok(OpenResult {
             total,
             start,
@@ -152,7 +149,12 @@ mod tests {
         assert_eq!(res.total, 10);
         assert_eq!(res.start, 0);
         assert_eq!(res.end, 9);
-        let bytes = res.stream.map(|r| r.unwrap()).collect::<Vec<_>>().await.concat();
+        let bytes = res
+            .stream
+            .map(|r| r.unwrap())
+            .collect::<Vec<_>>()
+            .await
+            .concat();
         assert_eq!(bytes, b"0123456789");
     }
 
@@ -165,7 +167,12 @@ mod tests {
         let res = s.open_range("k3", Some((2, 5))).await.unwrap();
         assert_eq!(res.start, 2);
         assert_eq!(res.end, 5);
-        let bytes = res.stream.map(|r| r.unwrap()).collect::<Vec<_>>().await.concat();
+        let bytes = res
+            .stream
+            .map(|r| r.unwrap())
+            .collect::<Vec<_>>()
+            .await
+            .concat();
         assert_eq!(bytes, b"2345");
     }
 }
