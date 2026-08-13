@@ -73,6 +73,9 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: server -> target
+          # Tag-scope caches are unreachable by anything but this tag's
+          # re-runs; restore from main's warmed cache instead of saving.
+          save-if: ${{ github.ref_type == 'branch' }}
 
       - uses: actions/download-artifact@v8
         with:
