@@ -50,6 +50,39 @@ function uploadChunkXHR({ url, headers, body, signal, onChunkProgress }) {
   });
 }
 
+// Reads, encrypts and (for s3) presigns one chunk ahead of its upload, so the
+// network is never idle waiting for the app server between chunks.
+async function prepareChunk({ id, token, chunkSize, file, cryptoKey, n, backend, signal }) {
+  const startByte = (n - 1) * chunkSize;
+  if (startByte >= file.size) return null;
+  const rawChunkSlice = file.slice(startByte, Math.min(startByte + chunkSize, file.size));
+  const rawBuffer = await rawChunkSlice.arrayBuffer();
+  const encryptedBytes = await encryptChunk(rawBuffer, cryptoKey);
+  let presigned = null;
+  if (backend === "s3") {
+    let attempt = 0;
+    for (;;) {
+      attempt++;
+      try {
+        presigned = await api(`/api/uploads/${id}/parts/${n}/presign`, {
+          headers: { "x-upload-token": token },
+          signal,
+        });
+        break;
+      } catch (e) {
+        if (
+          e instanceof ApiError &&
+          [400, 401, 404, 409, 413, 422, 507].includes(e.status ?? -1)
+        ) {
+          throw e;
+        }
+        if (attempt >= RETRIES) throw e;
+      }
+    }
+  }
+  return { startByte, rawSize: rawChunkSlice.size, encryptedBytes, presigned };
+}
+
 export async function uploadFile({
   file,
   ttlSeconds,
@@ -82,58 +115,49 @@ export async function uploadFile({
   let etags = [];
 
   try {
+    const prepare = (n) =>
+      prepareChunk({ id, token, chunkSize, file, cryptoKey, n, backend: started.backend, signal });
+    let inflight = prepare(1);
     for (let n = 1; ; n++) {
-      const startByte = (n - 1) * chunkSize;
-      if (startByte >= file.size) break;
-      const rawChunkSlice = file.slice(
-        startByte,
-        Math.min(startByte + chunkSize, file.size),
-      );
-      const rawBuffer = await rawChunkSlice.arrayBuffer();
-
-      // Encrypt chunk bytes: result is [12-byte IV][Ciphertext + Tag]
-      const encryptedBytes = await encryptChunk(rawBuffer, cryptoKey);
+      const cur = await inflight;
+      if (!cur) break;
+      // Prefetch the next chunk while this one uploads.
+      const next = prepare(n + 1);
+      next.catch(() => {}); // rejection surfaces when awaited next iteration
+      inflight = next;
 
       let attempt = 0;
       let ok = false;
       while (!ok) {
         attempt++;
         try {
+          const url =
+            started.backend === "s3" ? cur.presigned.url : `/api/uploads/${id}/parts/${n}`;
+          const headers =
+            started.backend === "s3"
+              ? undefined
+              : {
+                  "x-upload-token": token,
+                  "content-type": "application/octet-stream",
+                };
+          const xhr = await uploadChunkXHR({
+            url,
+            headers,
+            body: cur.encryptedBytes,
+            signal,
+            onChunkProgress: (loaded, total) => {
+              const ratio = total > 0 ? Math.min(1, loaded / total) : 1;
+              const totalSent = Math.min(
+                file.size,
+                cur.startByte + Math.round(ratio * cur.rawSize),
+              );
+              onProgress?.(totalSent, file.size, n);
+            },
+          });
           if (started.backend === "s3") {
-            const presigned = await api(`/api/uploads/${id}/parts/${n}/presign`, {
-              headers: { "x-upload-token": token },
-              signal,
-            });
-            const xhr = await uploadChunkXHR({
-              url: presigned.url,
-              body: encryptedBytes,
-              signal,
-              onChunkProgress: (loaded, total) => {
-                const ratio = total > 0 ? Math.min(1, loaded / total) : 1;
-                const rawSentInChunk = Math.round(ratio * rawChunkSlice.size);
-                const totalSent = Math.min(file.size, startByte + rawSentInChunk);
-                onProgress?.(totalSent, file.size, n);
-              },
-            });
             const etag = xhr.getResponseHeader("etag");
             if (!etag) throw new Error(`presigned part ${n}: no etag`);
             etags.push(etag);
-          } else {
-            await uploadChunkXHR({
-              url: `/api/uploads/${id}/parts/${n}`,
-              headers: {
-                "x-upload-token": token,
-                "content-type": "application/octet-stream",
-              },
-              body: encryptedBytes,
-              signal,
-              onChunkProgress: (loaded, total) => {
-                const ratio = total > 0 ? Math.min(1, loaded / total) : 1;
-                const rawSentInChunk = Math.round(ratio * rawChunkSlice.size);
-                const totalSent = Math.min(file.size, startByte + rawSentInChunk);
-                onProgress?.(totalSent, file.size, n);
-              },
-            });
           }
           ok = true;
         } catch (e) {
@@ -146,8 +170,7 @@ export async function uploadFile({
           if (attempt >= RETRIES) throw e;
         }
       }
-      const finishedSent = Math.min(file.size, startByte + rawChunkSlice.size);
-      onProgress?.(finishedSent, file.size, n);
+      onProgress?.(Math.min(file.size, cur.startByte + cur.rawSize), file.size, n);
     }
     if (started.backend === "s3") {
       await api(`/api/uploads/${id}/complete`, {
