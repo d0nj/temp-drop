@@ -4,7 +4,7 @@
 
 <header class="top-nav">
   <a href="/" class="brand-link">
-    <span class="brand-icon">⚡</span>
+    <span class="brand-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#00ff66" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><g transform="translate(4.5 4.5) scale(0.625)"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></g></svg></span>
     <span class="brand-title">{title}</span>
   </a>
   <div class="status-badge">

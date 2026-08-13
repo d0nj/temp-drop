@@ -166,7 +166,7 @@
             </div>
           {:else}
             <div class="drop-prompt">
-              <div class="drop-icon-box">⬆</div>
+              <div class="drop-icon-box"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#00ff66" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg></div>
               <p class="drop-primary">
                 Drop file here or <span class="accent-underline">browse</span>
               </p>

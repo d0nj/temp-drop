@@ -121,7 +121,7 @@
           <div class="custom-loader">
             <svg class="loader-svg" viewBox="0 0 50 50" width="44" height="44">
               <circle class="loader-track" cx="25" cy="25" r="18" fill="none" stroke="#1f2432" stroke-width="4" />
-              <circle class="loader-spinner" cx="25" cy="25" r="18" fill="none" stroke="#00ff66" stroke-width="4" stroke-linecap="round" />
+              <circle class="loader-spinner" cx="25" cy="25" r="18" fill="none" stroke="#00ff66" stroke-width="4" stroke-linecap="round" stroke-dasharray="83 30" />
             </svg>
           </div>
           <p class="mono-text">Loading file details...</p>
@@ -199,6 +199,7 @@
 
         <div class="action-section">
           <button class="btn btn-download" onclick={handleDownload} disabled={decrypting || !keyStr}>
+            <span class="btn-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg></span>
             {#if decrypting}
               DECRYPTING...
             {:else if keyStr}
@@ -371,6 +372,10 @@
   }
 
   .btn-download {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
     background: #00ff66;
     color: #000000;
     border-color: #00ff66;

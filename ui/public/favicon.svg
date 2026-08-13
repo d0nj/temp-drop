@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <!-- favicon: filled bolt on dark tile, accent green (reads at 16px) -->
+  <rect x="1" y="1" width="22" height="22" rx="5" fill="#0d121d" stroke="#262a36" stroke-width="1.5" />
+  <path transform="translate(4.5 4.5) scale(0.625)" d="M13 2 3 14h9l-1 8 10-12h-9l1-8z" fill="#00ff66" />
+</svg>
