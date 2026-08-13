@@ -1,9 +1,11 @@
 <footer class="bottom-footer">
-  <span>TEMPDROP v0.1.0</span>
+  <span>TEMPDROP v0.1.1</span>
   <span class="sep">•</span>
   <span>ZERO PERSISTENCE</span>
   <span class="sep">•</span>
   <span>NO TRACKING</span>
+  <span class="sep">•</span>
+  <a href="https://github.com/d0nj/temp-drop" target="_blank" rel="noopener noreferrer">SOURCE</a>
 </footer>
 
 <style>
@@ -19,5 +21,15 @@
 
   .sep {
     color: #262a36;
+  }
+
+  .bottom-footer a {
+    color: #475569;
+    text-decoration: none;
+  }
+
+  .bottom-footer a:hover {
+    color: #94a3b8;
+    text-decoration: underline;
   }
 </style>
