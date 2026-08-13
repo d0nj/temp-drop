@@ -2,6 +2,31 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.1.2] - 2026-08-13
+
+### UI
+
+- **SVG icon set**: replaced emoji placeholders with a cohesive stroke-based
+  icon set — bolt-in-tile brand mark (header), upload arrow (drop zone),
+  download arrow (preview page), and a refined spinner with a visible rotation
+  gap.
+- **Favicon set**: brand SVG favicon plus rasterized PNGs (16, 32, 180, 192,
+  512) and a web manifest for iOS/Android home-screen installs.
+- **Footer source link**: footer now links to the repository.
+- **Version from release tag**: the footer version is injected from the GitHub
+  release tag at build time instead of being hardcoded, so it can never drift
+  from the shipped release.
+
+### CI / Release Infrastructure
+
+- **Shared sccache cache**: release builds now share a persistent sccache
+  cache on S3 (SeaweedFS), replacing the per-run `rust-cache` — repeat
+  releases build at ~100% cache hit rate with zero cache-warming overhead.
+
+### Legal
+
+- Added MIT license.
+
 ## [v0.1.1] - 2026-08-13
 
 ### Fixed
