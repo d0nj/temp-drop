@@ -89,6 +89,9 @@ jobs:
           RUSTC_WRAPPER: sccache
         run: cargo build --release --locked --target ${{ matrix.target }}
 
+      - name: Show sccache Stats
+        run: sccache --show-stats
+
       - name: Package Release Assets
         shell: bash
         run: |
