@@ -2,6 +2,21 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.1.1] - 2026-08-13
+
+### Fixed
+
+- **Continuous upload progress**: chunk encryption and presigning are now
+  pipelined — the next chunk is prepared while the current one uploads, so the
+  progress bar no longer stalls at every chunk boundary.
+
+### CI / Release Infrastructure
+
+- CI now only runs on actual code changes (server, UI, Cargo files, workflow
+  definitions) instead of every push.
+- Fixed release publishing: the publish job now checks out the repository,
+  which `gh release create` requires.
+
 ## [v0.1.0] - 2026-08-13
 
 ### Security
