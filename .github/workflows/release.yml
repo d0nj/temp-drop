@@ -70,12 +70,13 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: server -> target
-          # Tag-scope caches are unreachable by anything but this tag's
-          # re-runs; restore from main's warmed cache instead of saving.
-          save-if: ${{ github.ref_type == 'branch' }}
+      - name: Install sccache (shared S3 cache — no branch/tag scope isolation)
+        uses: mozilla-actions/sccache-action@v0.0.11
+        env:
+          SCCACHE_S3_ACCESS_KEY: ${{ secrets.S3_ACCESS_KEY }}
+          SCCACHE_S3_SECRET_KEY: ${{ secrets.S3_SECRET_KEY }}
+          SCCACHE_S3_BUCKET: ${{ secrets.S3_BUCKET }}
+          SCCACHE_S3_ENDPOINT: ${{ secrets.S3_ENDPOINT }}
 
       - uses: actions/download-artifact@v8
         with:
@@ -84,6 +85,8 @@ jobs:
 
       - name: Build Release Binary
         working-directory: server
+        env:
+          RUSTC_WRAPPER: sccache
         run: cargo build --release --locked --target ${{ matrix.target }}
 
       - name: Package Release Assets
