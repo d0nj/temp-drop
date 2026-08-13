@@ -16,6 +16,8 @@ All notable changes to this project are documented in this file.
 - **Version from release tag**: the footer version is injected from the GitHub
   release tag at build time instead of being hardcoded, so it can never drift
   from the shipped release.
+- **Open Graph tags**: `og:`/`twitter:` meta tags with a branded 1200x630
+  banner for link previews on social platforms.
 
 ### CI / Release Infrastructure
 
